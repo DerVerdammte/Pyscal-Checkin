@@ -102,27 +102,67 @@ def admin_menu(first_index, first_row, auth_sheet):
     :param auth_sheet: PyscalSheets object of Auth_Sheet
     :return: Log_Entry sting
     '''
-    text = "1: Delete Other Card 2: Set Next Balance 3: Add Next Balance 4: Add New Profile"
+    text = "\nADMIN MENU: \n1: Enter Area \n2: Add New Profile \n3: Delete Other " \
+           "Card \n4: Set Balance of Card \n5: Add Balance to Card. "
     selection = int(get_numpress(text))
     print(selection)
-    if selection == 1:
-        print("Selected Deletion Option. Not yet implemented")
-        #id, value, = reader.read()
-        #log_message = 'Delete Operation - SecLvl 3: ' + delete_nfc_id(id,
-        # value)
-        log_message = "Wambo"
-    elif selection ==2:
-        log_message = "WIP Set some Balance"
-    elif selection ==3:
-        log_message = "WIP added Balace to Account"
-    elif selection ==4:
+
+
+    if selection ==1:
+        #Enter the Area
+        log_message = "WIP Enter Area"
+    elif selection == 2:
+        #Add new Profile
         log_message = create_new_account(sec_level=3, auth_sheet=auth_sheet)
-
-
+    elif selection ==3:
+        #Delete Profile
+        print("Selected Deletion Option. Not yet implemented")
+        id, value, = reader.read()
+        log_message = delete_nfc_id(id, auth_sheet)
+    elif selection ==4:
+        #Set Balance of Other Card
+        log_message = set_balance(auth_sheet=auth_sheet)
     elif selection ==5:
-        log_message = "Create new Card for Existing Member"
+        log_message = add_balance(auth_sheet=auth_sheet)
+    elif selection ==6:
+        log_message = "Assign New NFC-Card to Athletics Member_ID"
+
     print(f"log message {log_message}")
     return log_message
+
+def set_balance(auth_sheet):
+    print("Present the new Card")
+    second_nfc_id, nfc_payload = reader.read()
+    second_index, second_row = auth_sheet.find_unique(second_nfc_id,
+                                                      AUTH_LABELS["nfc_id"])
+    balance = get_numpress("Neues Guthaben des Kunden:  ",
+                           max=10000, min=0)
+    second_row[AUTH_LABELS["balance"]] = balance
+    auth_sheet.replace_range(second_index, 0, [second_row])
+
+def add_balance(balance, auth_sheet):
+    print("Present the new Card")
+    second_nfc_id, nfc_payload = reader.read()
+    second_index, second_row = auth_sheet.find_unique(second_nfc_id,
+                                                      AUTH_LABELS["nfc_id"])
+    balance = int(get_numpress("Guthaben des Kunden erhöhen um: ",
+                           max=10000, min=0)) + int(second_row[AUTH_LABELS[
+        "balance"]])
+    second_row[AUTH_LABELS["balance"]] = balance
+    auth_sheet.replace_range(second_index, 0, [second_row])
+    mitglieds_id = second_row[AUTH_LABELS["member_id"]]
+    return f"Guthaben des Kunden {mitglieds_id} um {balance} erhöht. "
+
+def delete_nfc_id(id, auth_sheet):
+    second_id, second_row = auth_sheet.find_unique(id, AUTH_LABELS["nfc_id"])
+    member_id = second_row[AUTH_LABELS["member_id"]]
+    second_row[AUTH_LABELS["comment"]] = "Old Member ID: "+ second_row[
+        AUTH_LABELS["member_id"]] + second_row[AUTH_LABELS["comment"]]
+    second_row[AUTH_LABELS["nfc_id"]], second_row[AUTH_LABELS["member_id"]] = \
+        "",""
+    auth_sheet.replace_range(second_id, 0, [second_row])
+    return f"Deleted user {member_id} with NFC_ID {id}, "
+
 
 def mitarbeiter_menu(first_index, first_row, auth_sheet):
     '''
@@ -189,14 +229,16 @@ while True:
                     log_entry = log_entry + "User war erst Eingeloggt. Kein " \
                                           "Geld Abgezogen"
             elif sec_level == 2:
+                #user is worker
                 print("Mitarbeiter Menu: ")
                 log_entry = log_entry + mitarbeiter_menu(first_index,
                                                          first_row,
                                               auth_sheet)
             elif sec_level == 3:
-                log_entry = log_entry + admin_menu(first_index=first_index,
+                #user is Administrator
+                log_entry = log_entry + str(admin_menu(first_index=first_index,
                                      first_row=first_row,
-                           auth_sheet=auth_sheet)
+                           auth_sheet=auth_sheet))
             else:
                 log_entry = log_entry + f"- [ERROR] Error in Sec-Level. " \
                                         f"Please " \

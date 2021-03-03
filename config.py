@@ -16,7 +16,10 @@ AUTH_LABELS = {
     "security_level": 4,
     "timestamp_last": 5,
     "name": 6,
-    "comment": 7
+    "comment": 7,
+    "euro_balance": 8,
+    "corona_points": 9
 }
+
 CHECKIN_COOLDOWN = 10
 ENTRY_PRICE = 1

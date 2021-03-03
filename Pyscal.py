@@ -213,13 +213,13 @@ class Pyscalsheets:
             cols = 1
         range = self.convert_to_range(row_index, row_index+rows-1, col_index,
                                       col_index+cols-1)
-        print("Range Calculated")
-        print(range)
+        #print("Range Calculated")
+        #print(range)
 
         result = self.service.spreadsheets().values().update(
             spreadsheetId=self.get_spreadsheet_id(), range=range,
             valueInputOption='RAW', body={'values':array}).execute()
-        print('{0} cells updated.'.format(result.get('updatedCells')))
+        #print('{0} cells updated.'.format(result.get('updatedCells')))
 
     def delete_coords(self,row_first, row_last, col_first, col_last,
                       offset_row = 0, offset_col = 0):

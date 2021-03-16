@@ -62,13 +62,15 @@ def create_new_account(sec_level, auth_sheet):
         if sec_level == 3:
             auth_level = get_numpress("Auth Level Eingeben: 1 Member, 2 Mitarbeiter, 3 Admin ",max=3,min=1)
         else:
-            auth_level = get_numpress("Auth Level Eingeben: 1 Member ",max=2,min=1)
+            auth_level = 1  #= get_numpress("Auth Level Eingeben: 1 Member ",max=2,min=1)
         name = input("Benutzername Eingeben (Freiwillig): ")
+        corona_shakes = get_numpress("Euro Guthaben Eingeben (Max 100) ", max=100, min=0)
+        euro_balance = get_numpress("Anzahl Corona-Punkte: ", max=50, min=0)
         comment = input("Kommentar Hinzufügen (Freiwillig): ")
 
         body = auth_sheet.generate_body([second_nfc_id, member_nr, balance,
                                          auth_level,time.time(), name,
-                                         comment], insert_time=True)
+                                         comment, euro_balance, corona_shakes], insert_time=True)
         auth_sheet.append_spreadsheet_row(body)
         return f"Generated new Account with stats: {body}"
     else:
@@ -94,6 +96,11 @@ def user_pay(id, auth_sheet, old_balance, member_id, price = ENTRY_PRICE):
     return f"User {member_id} has Paid {price} points for entry. {balance} " \
            f"Points left"
 
+def open_door():
+    print("Door Opened")
+    time.sleep(1)
+    print("Dorr Closed")
+
 def admin_menu(first_index, first_row, auth_sheet):
     '''
     Opens up the Admin Menu for the Checkin System
@@ -103,14 +110,15 @@ def admin_menu(first_index, first_row, auth_sheet):
     :return: Log_Entry sting
     '''
     text = "\nADMIN MENU: \n1: Enter Area \n2: Add New Profile \n3: Delete Other " \
-           "Card \n4: Set Balance of Card \n5: Add Balance to Card. "
+           "Card \n4: Add Wellness_Points to Card. \n5: Add Euro-Points to card.\n6:Add Corona-Points to card\n7: Add new Card to Existing Member"
     selection = int(get_numpress(text))
     print(selection)
 
 
     if selection ==1:
         #Enter the Area
-        log_message = "WIP Enter Area"
+        open_door()
+        log_message = "Enter Area"
     elif selection == 2:
         #Add new Profile
         log_message = create_new_account(sec_level=3, auth_sheet=auth_sheet)
@@ -119,12 +127,16 @@ def admin_menu(first_index, first_row, auth_sheet):
         print("Selected Deletion Option. Not yet implemented")
         id, value, = reader.read()
         log_message = delete_nfc_id(id, auth_sheet)
+    #elif selection ==4:
+    #    #Set Balance of Other Card
+    #    log_message = set_balance(auth_sheet=auth_sheet)
     elif selection ==4:
-        #Set Balance of Other Card
-        log_message = set_balance(auth_sheet=auth_sheet)
+        log_message = add_balance(auth_sheet=auth_sheet, balance_index=AUTH_LABELS["balance"])
     elif selection ==5:
-        log_message = add_balance(auth_sheet=auth_sheet)
+        log_message = add_balance(auth_sheet=auth_sheet, balance_index=AUTH_LABELS["euro_balance"])
     elif selection ==6:
+        log_message = add_balance(auth_sheet=auth_sheet, balance_index=AUTH_LABELS["corona_points"])
+    elif selection ==7:
         log_message = "Assign New NFC-Card to Athletics Member_ID"
 
     print(f"log message {log_message}")
@@ -140,15 +152,14 @@ def set_balance(auth_sheet):
     second_row[AUTH_LABELS["balance"]] = balance
     auth_sheet.replace_range(second_index, 0, [second_row])
 
-def add_balance(balance, auth_sheet):
+def add_balance(auth_sheet, balance_index):
     print("Present the new Card")
     second_nfc_id, nfc_payload = reader.read()
     second_index, second_row = auth_sheet.find_unique(second_nfc_id,
                                                       AUTH_LABELS["nfc_id"])
     balance = int(get_numpress("Guthaben des Kunden erhöhen um: ",
-                           max=10000, min=0)) + int(second_row[AUTH_LABELS[
-        "balance"]])
-    second_row[AUTH_LABELS["balance"]] = balance
+                           max=10000, min=0)) + int(second_row[balance_index])
+    second_row[balance_index] = balance
     auth_sheet.replace_range(second_index, 0, [second_row])
     mitglieds_id = second_row[AUTH_LABELS["member_id"]]
     return f"Guthaben des Kunden {mitglieds_id} um {balance} erhöht. "
@@ -181,6 +192,48 @@ def mitarbeiter_menu(first_index, first_row, auth_sheet):
         log_message = create_new_account(2, auth_sheet=auth_sheet)
     return log_message
 
+def kassenfunktion():
+    nfc_id, value = scan_nfc(reader)
+    log_entry = ""
+    first_index, first_row = auth_sheet.find_unique(nfc_id, AUTH_LABELS[
+        "nfc_id"])
+    try:
+        euro_balance, corona_balance = int(first_row[AUTH_LABELS["euro_balance"]]), int(first_row[AUTH_LABELS["corona_points"]])
+    except TypeError:
+        print("User not Registered")
+        return "Transaction Did not work"
+    except IndexError:
+        print("Index Error")
+        return "Transaction Did not Work"
+    selection = int(get_numpress(f"Mit Points oder Corona_Points zahlen?\n1) Points {euro_balance}\n2)Corona Points {corona_balance} ",
+                               max=2, min=1))
+    amount = int(get_numpress(f"Betrag eingeben:\n",
+        max=100, min=0))
+
+    if selection == 1:
+        #bezahlen mit normalen_punkten
+        if amount <= euro_balance:
+            #zu viel
+            first_row[AUTH_LABELS["euro_balance"]] = euro_balance-amount
+            auth_sheet.replace_range(first_index, 0, [first_row])
+            log_entry = f"User paid {amount} Gym-Points, they have {euro_balance-amount} Gym-Points left"
+        else:
+            #möglich
+            log_entry = "User has not enough money left"
+    if selection == 2:
+        #bezahlen mit corona_punkten
+
+        if amount <= corona_balance:
+            #möglich
+            first_row[AUTH_LABELS["corona_points"]] = corona_balance - amount
+            auth_sheet.replace_range(first_index, 0, [first_row])
+            log_entry = f"User paid {amount} Corona-Points, they have {corona_balance - amount} Corona-Points left"
+        else:
+            #nicht möglich
+            log_entry = "User has not enough Corona-Points left."
+
+    return log_entry
+
 auth_sheet = ps.Pyscalsheets("1ZhVw2du5qQ_oBQdTN4FXLfDZCgR95o7IbCGDstekrCc",
                       "1NG-Avb1WymSAfApRnCK6BIwevV_ssn187WqEbvFLU7c",
                       1) ##Pyscal
@@ -195,6 +248,13 @@ while True:
         log_entry = ""
         first_index, first_row = auth_sheet.find_unique(nfc_id, AUTH_LABELS[
             "nfc_id"])
+        #Hier passe ich die kassenkarte ab, um die kassenfeatures zu testen
+        if int(nfc_id) == 520580871409:
+            print("KASSE BIS ZUM NÄCHSTEN RESTART AKTIVIERT!")
+            while True:
+                print("Present NFC Tag of Customer")
+                print(kassenfunktion())
+
         #print(f"first_index: {first_index}, first row: {first_row}")
         if first_index == -1:
             log_entry = log_entry + " [ERROR] NFC Chip not registered"
@@ -251,4 +311,5 @@ while True:
         print(f"Log Message: {log_entry}")
         body = auth_sheet.generate_body([nfc_id, log_entry], insert_time=True)
         auth_sheet.append_spreadsheet_row(body=body, is_log=True)
+        print("Please Present your ID")
 

@@ -4,17 +4,19 @@ import Pyscal as ps
 from config import *
 from mfrc522 import SimpleMFRC522
 import time
-
 import RPi.GPIO as GPIO
-#from pprint import pprint
 
-#from googleapiclient import discovery
-#import pickle
-#import os.path
-#from googleapiclient.discovery import build
-#from google_auth_oauthlib.flow import InstalledAppFlow
-#from google.auth.transport.requests import Request
-#from datetime import datetime
+#
+# from pprint import pprint
+#
+# from googleapiclient import discovery
+# import pickle
+# import os.path
+# from googleapiclient.discovery import build
+# from google_auth_oauthlib.flow import InstalledAppFlow
+# from google.auth.transport.requests import Request
+# from datetime import datetime
+
 
 def get_numpress(description = "" ,min = 0, max = 9, default = 0):
     print(description)
@@ -33,6 +35,7 @@ def get_numpress(description = "" ,min = 0, max = 9, default = 0):
         else:
             print(f"Invalid Answer: ans = {ans} is out of bounds. Try Again")
 
+
 def scan_nfc(reader_):
     '''
     Scans the NFC Tag
@@ -40,6 +43,7 @@ def scan_nfc(reader_):
     :return: id, Values stored on Chip
     '''
     return reader_.read()
+
 
 def create_new_account(sec_level, auth_sheet):
     '''
@@ -96,10 +100,12 @@ def user_pay(id, auth_sheet, old_balance, member_id, price = ENTRY_PRICE):
     return f"User {member_id} has Paid {price} points for entry. {balance} " \
            f"Points left"
 
+
 def open_door():
     print("Door Opened")
     time.sleep(1)
     print("Dorr Closed")
+
 
 def admin_menu(first_index, first_row, auth_sheet):
     '''
@@ -142,6 +148,7 @@ def admin_menu(first_index, first_row, auth_sheet):
     print(f"log message {log_message}")
     return log_message
 
+
 def set_balance(auth_sheet):
     print("Present the new Card")
     second_nfc_id, nfc_payload = reader.read()
@@ -151,6 +158,7 @@ def set_balance(auth_sheet):
                            max=10000, min=0)
     second_row[AUTH_LABELS["balance"]] = balance
     auth_sheet.replace_range(second_index, 0, [second_row])
+
 
 def add_balance(auth_sheet, balance_index):
     print("Present the new Card")
@@ -163,6 +171,7 @@ def add_balance(auth_sheet, balance_index):
     auth_sheet.replace_range(second_index, 0, [second_row])
     mitglieds_id = second_row[AUTH_LABELS["member_id"]]
     return f"Guthaben des Kunden {mitglieds_id} um {balance} erhöht. "
+
 
 def delete_nfc_id(id, auth_sheet):
     second_id, second_row = auth_sheet.find_unique(id, AUTH_LABELS["nfc_id"])
@@ -191,6 +200,7 @@ def mitarbeiter_menu(first_index, first_row, auth_sheet):
     elif selection ==2:
         log_message = create_new_account(2, auth_sheet=auth_sheet)
     return log_message
+
 
 def kassenfunktion():
     nfc_id, value = scan_nfc(reader)
@@ -240,11 +250,12 @@ auth_sheet = ps.Pyscalsheets("1ZhVw2du5qQ_oBQdTN4FXLfDZCgR95o7IbCGDstekrCc",
 reader = SimpleMFRC522()
 
 #create_new_account(3, auth_sheet=auth_sheet)
-print("Present your ID")
+print("Present your ID blibblub")
 while True:
     time.sleep(1)
     try:
         nfc_id, value = scan_nfc(reader)
+        print("SCAN COMPLETE")
         log_entry = ""
         first_index, first_row = auth_sheet.find_unique(nfc_id, AUTH_LABELS[
             "nfc_id"])
@@ -304,12 +315,10 @@ while True:
                                         f"Please " \
                                         f"contact System Admin"
 
-
-
     finally:
         GPIO.cleanup()
         print(f"Log Message: {log_entry}")
         body = auth_sheet.generate_body([nfc_id, log_entry], insert_time=True)
         auth_sheet.append_spreadsheet_row(body=body, is_log=True)
-        print("Please Present your ID")
+        print("Please Present your ID blibblub")
 

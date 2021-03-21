@@ -123,6 +123,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-token.pickle
+JSpecter/token.pickle
 
-credentials.json
+JSpecter/credentials.json

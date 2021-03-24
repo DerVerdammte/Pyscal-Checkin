@@ -244,6 +244,80 @@ def kassenfunktion():
 
     return log_entry
 
+
+def main_loop():
+    while True:
+        time.sleep(1)
+        try:
+            nfc_id, value = scan_nfc(reader)
+            print("SCAN COMPLETE")
+            log_entry = ""
+            first_index, first_row = auth_sheet.find_unique(nfc_id, AUTH_LABELS[
+                "nfc_id"])
+            #Hier passe ich die kassenkarte ab, um die kassenfeatures zu testen
+            if int(nfc_id) == 520580871409:
+                print("KASSE BIS ZUM NÄCHSTEN RESTART AKTIVIERT!")
+                while True:
+                    print("Present NFC Tag of Customer")
+                    print(kassenfunktion())
+
+            #print(f"first_index: {first_index}, first row: {first_row}")
+            if first_index == -1:
+                log_entry = log_entry + " [ERROR] NFC Chip not registered"
+            else:
+                sec_level = int(first_row[AUTH_LABELS["security_level"]])
+                log_entry = log_entry + f"SecLvl{sec_level} "
+
+                if sec_level == 1:
+                    #ID card Belongs to normal User. Check for Balance and Last
+                    # Checkin
+                    temp_time = int(first_row[AUTH_LABELS["timestamp_last"]][0:10])
+                    curr_time = int(str(time.time())[0:10])
+                    difference = curr_time-temp_time
+                    #print(f"Start time {temp_time}, End Time {curr_time}, diff = "
+                    #   f"{difference}")
+                    #print(f"difference: {difference} CHECKIN_COOLDOWN:
+                    # {CHECKIN_COOLDOWN}")
+                    if difference > CHECKIN_COOLDOWN:
+                        #cooldown has already passed
+                        if int(first_row[AUTH_LABELS["balance"]]) >= 1:
+                            #user has enough money and his cooldown passed
+                            log_entry = log_entry + user_pay(first_index, auth_sheet, first_row[
+                                AUTH_LABELS["balance"]], first_row[AUTH_LABELS[
+                                "member_id"]])
+
+                        else:
+                            #user has not enough money.
+                            log_entry = log_entry + "Access Denied. User has no " \
+                                                    "more Tokens"
+                    else:
+                        #user was logged in a few moments ago, no money deducted
+                        log_entry = log_entry + "User war erst Eingeloggt. Kein " \
+                                                "Geld Abgezogen"
+                elif sec_level == 2:
+                    #user is worker
+                    print("Mitarbeiter Menu: ")
+                    log_entry = log_entry + mitarbeiter_menu(first_index,
+                                                             first_row,
+                                                             auth_sheet)
+                elif sec_level == 3:
+                    #user is Administrator
+                    log_entry = log_entry + str(admin_menu(first_index=first_index,
+                                                           first_row=first_row,
+                                                           auth_sheet=auth_sheet))
+                else:
+                    log_entry = log_entry + f"- [ERROR] Error in Sec-Level. " \
+                                            f"Please " \
+                                            f"contact System Admin"
+
+        finally:
+            GPIO.cleanup()
+            print(f"Log Message: {log_entry}")
+            body = auth_sheet.generate_body([nfc_id, log_entry], insert_time=True)
+            auth_sheet.append_spreadsheet_row(body=body, is_log=True)
+            print("Please Present your ID blibblub")
+
+
 auth_sheet = ps.Pyscalsheets("1ZhVw2du5qQ_oBQdTN4FXLfDZCgR95o7IbCGDstekrCc",
                       "1NG-Avb1WymSAfApRnCK6BIwevV_ssn187WqEbvFLU7c",
                       1) ##Pyscal
@@ -251,74 +325,3 @@ reader = SimpleMFRC522()
 
 #create_new_account(3, auth_sheet=auth_sheet)
 print("Present your ID blibblub")
-while True:
-    time.sleep(1)
-    try:
-        nfc_id, value = scan_nfc(reader)
-        print("SCAN COMPLETE")
-        log_entry = ""
-        first_index, first_row = auth_sheet.find_unique(nfc_id, AUTH_LABELS[
-            "nfc_id"])
-        #Hier passe ich die kassenkarte ab, um die kassenfeatures zu testen
-        if int(nfc_id) == 520580871409:
-            print("KASSE BIS ZUM NÄCHSTEN RESTART AKTIVIERT!")
-            while True:
-                print("Present NFC Tag of Customer")
-                print(kassenfunktion())
-
-        #print(f"first_index: {first_index}, first row: {first_row}")
-        if first_index == -1:
-            log_entry = log_entry + " [ERROR] NFC Chip not registered"
-        else:
-            sec_level = int(first_row[AUTH_LABELS["security_level"]])
-            log_entry = log_entry + f"SecLvl{sec_level} "
-
-            if sec_level == 1:
-                #ID card Belongs to normal User. Check for Balance and Last
-                # Checkin
-                temp_time = int(first_row[AUTH_LABELS["timestamp_last"]][0:10])
-                curr_time = int(str(time.time())[0:10])
-                difference = curr_time-temp_time
-                #print(f"Start time {temp_time}, End Time {curr_time}, diff = "
-                #   f"{difference}")
-                #print(f"difference: {difference} CHECKIN_COOLDOWN:
-                # {CHECKIN_COOLDOWN}")
-                if difference > CHECKIN_COOLDOWN:
-                    #cooldown has already passed
-                    if int(first_row[AUTH_LABELS["balance"]]) >= 1:
-                        #user has enough money and his cooldown passed
-                        log_entry = log_entry + user_pay(first_index, auth_sheet, first_row[
-                            AUTH_LABELS["balance"]], first_row[AUTH_LABELS[
-                            "member_id"]])
-
-                    else:
-                        #user has not enough money.
-                        log_entry = log_entry + "Access Denied. User has no " \
-                                              "more Tokens"
-                else:
-                    #user was logged in a few moments ago, no money deducted
-                    log_entry = log_entry + "User war erst Eingeloggt. Kein " \
-                                          "Geld Abgezogen"
-            elif sec_level == 2:
-                #user is worker
-                print("Mitarbeiter Menu: ")
-                log_entry = log_entry + mitarbeiter_menu(first_index,
-                                                         first_row,
-                                              auth_sheet)
-            elif sec_level == 3:
-                #user is Administrator
-                log_entry = log_entry + str(admin_menu(first_index=first_index,
-                                     first_row=first_row,
-                           auth_sheet=auth_sheet))
-            else:
-                log_entry = log_entry + f"- [ERROR] Error in Sec-Level. " \
-                                        f"Please " \
-                                        f"contact System Admin"
-
-    finally:
-        GPIO.cleanup()
-        print(f"Log Message: {log_entry}")
-        body = auth_sheet.generate_body([nfc_id, log_entry], insert_time=True)
-        auth_sheet.append_spreadsheet_row(body=body, is_log=True)
-        print("Please Present your ID blibblub")
-

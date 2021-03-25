@@ -206,12 +206,14 @@ class Pyscalsheets:
         :param array: NON JAGGED array.
         :return:
         '''
-        rows = len(array)
+        rows = int(len(array))
         try:
             cols = len(array[0])
         except TypeError:
             cols = 1
-        range = self.convert_to_range(row_index, row_index+rows-1, col_index,
+        range = self.convert_to_range(int(row_index), int(row_index)+int(
+            rows)-1,
+                                          int(col_index),
                                       col_index+cols-1)
         print("Range Calculated")
         print(range)

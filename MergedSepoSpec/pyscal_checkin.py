@@ -81,7 +81,8 @@ def create_new_account(sec_level, auth_sheet):
         return "Card Already Registered"
 
 
-def user_pay(id, auth_sheet, old_balance, member_id, price = ENTRY_PRICE):
+def user_pay(id, auth_sheet, old_balance, member_id, price = ENTRY_PRICE,
+             currency = "GP"):
     '''
     Changes the Entry of the Money in the User indicated by the excel row (id).
 
@@ -92,7 +93,13 @@ def user_pay(id, auth_sheet, old_balance, member_id, price = ENTRY_PRICE):
     :param price: Standard 1, may change.
     :return: Returns a String of Log Entry
     '''
-    auth_sheet.replace_field(row=id, col=AUTH_LABELS["balance"],
+    if currency == "GP":
+        column = AUTH_LABELS["balance"]
+    elif currency == "CP":
+        column = AUTH_LABELS["corona_points"]
+    else:
+        column = AUTH_LABELS["euro_balance"]
+    auth_sheet.replace_field(row=id, col=column,
                              value=[int(old_balance)-price])
     auth_sheet.replace_field(row=id, col=AUTH_LABELS["timestamp_last"],
                              value=[int(time.time())])
@@ -246,6 +253,10 @@ def kassenfunktion():
 
 
 def main_loop():
+    auth_sheet = ps.Pyscalsheets("1ZhVw2du5qQ_oBQdTN4FXLfDZCgR95o7IbCGDstekrCc",
+                          "1NG-Avb1WymSAfApRnCK6BIwevV_ssn187WqEbvFLU7c",
+                          1) ##Pyscal
+    reader = SimpleMFRC522()
     while True:
         time.sleep(1)
         try:
@@ -318,10 +329,6 @@ def main_loop():
             print("Please Present your ID blibblub")
 
 
-auth_sheet = ps.Pyscalsheets("1ZhVw2du5qQ_oBQdTN4FXLfDZCgR95o7IbCGDstekrCc",
-                      "1NG-Avb1WymSAfApRnCK6BIwevV_ssn187WqEbvFLU7c",
-                      1) ##Pyscal
-reader = SimpleMFRC522()
 
 #create_new_account(3, auth_sheet=auth_sheet)
 print("Present your ID blibblub")
